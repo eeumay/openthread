@@ -620,12 +620,16 @@ Error CoapBase::PrepareNextBlockRequest(Message::BlockType aType,
     Error            error       = kErrorNone;
     bool             isOptionSet = false;
     uint16_t         blockOption = 0;
+    Message         *requestCopy = nullptr;
     Option::Iterator iterator;
 
     blockOption = (aType == Message::kBlockType1) ? kOptionBlock1 : kOptionBlock2;
 
-    aRequest.Init(kTypeConfirmable, static_cast<ot::Coap::Code>(aRequestOld.GetCode()));
-    SuccessOrExit(error = iterator.Init(aRequestOld));
+    requestCopy = aRequestOld.Clone(aRequestOld.GetLength() - sizeof(Metadata));
+    VerifyOrExit(requestCopy != nullptr, error = kErrorNoBufs);
+
+    aRequest.Init(kTypeConfirmable, static_cast<ot::Coap::Code>(requestCopy->GetCode()));
+    SuccessOrExit(error = iterator.Init(*requestCopy));
 
     // Copy options from last response to next message
     for (; !iterator.IsDone() && iterator.GetOption()->GetLength() != 0; error = iterator.Advance())
@@ -670,6 +674,7 @@ Error CoapBase::PrepareNextBlockRequest(Message::BlockType aType,
     }
 
 exit:
+    FreeMessage(requestCopy);
     return error;
 }
 
